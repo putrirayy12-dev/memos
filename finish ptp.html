@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Memory Color Test</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+
+background:linear-gradient(135deg,#74ebd5,#9face6);
+
+min-height:100vh;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+.container{
+
+width:95%;
+
+max-width:900px;
+
+background:white;
+
+padding:30px;
+
+border-radius:20px;
+
+box-shadow:0 10px 30px rgba(0,0,0,.2);
+
+text-align:center;
+
+}
+
+h1{
+
+margin-bottom:10px;
+
+}
+
+input{
+
+padding:12px;
+
+width:250px;
+
+border-radius:10px;
+
+border:1px solid #ccc;
+
+font-size:16px;
+
+margin-top:20px;
+
+}
+
+button{
+
+padding:12px 25px;
+
+border:none;
+
+border-radius:10px;
+
+background:#3f51b5;
+
+color:white;
+
+font-size:17px;
+
+cursor:pointer;
+
+margin-top:20px;
+
+transition:.3s;
+
+}
+
+button:hover{
+
+background:#283593;
+
+}
+
+#gameArea{
+
+display:none;
+
+}
+
+#display{
+
+margin-top:30px;
+
+}
+
+.colorBox{
+
+width:90px;
+
+height:90px;
+
+display:inline-block;
+
+margin:10px;
+
+border-radius:15px;
+
+cursor:pointer;
+
+transition:.2s;
+
+}
+
+.active{
+
+transform:scale(1.15);
+
+box-shadow:0 0 25px white;
+
+}
+
+.press{
+
+transform:scale(.9);
+
+}
+
+#levelText{
+
+margin-top:15px;
+
+font-size:25px;
+
+font-weight:bold;
+
+}
+
+#info{
+
+margin-top:20px;
+
+font-size:22px;
+
+}
+
+#scoreText{
+
+font-size:20px;
+
+margin-top:10px;
+
+}
+
+#playerCount{
+
+margin-top:10px;
+
+font-size:18px;
+
+font-weight:bold;
+
+}
+
+#tapPopup{
+
+position:fixed;
+
+bottom:35px;
+
+left:50%;
+
+transform:translateX(-50%) scale(.5);
+
+padding:15px 30px;
+
+border-radius:15px;
+
+color:white;
+
+font-size:22px;
+
+opacity:0;
+
+transition:.3s;
+
+}
+
+.showPopup{
+
+opacity:1;
+
+transform:translateX(-50%) scale(1);
+
+}
+
+.modal{
+
+position:fixed;
+
+left:0;
+
+top:0;
+
+width:100%;
+
+height:100%;
+
+background:rgba(0,0,0,.6);
+
+display:none;
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+.modal-content{
+
+background:white;
+
+padding:35px;
+
+border-radius:20px;
+
+width:320px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🧠 MEMORY COLOR TEST</h1>
+
+<div id="loginArea">
+
+<input type="text" id="playerName" placeholder="Masukkan Nama">
+
+<br>
+
+<button onclick="login()">Mulai</button>
+
+<div id="playerCount">👥 Pemain Hari Ini : ...</div>
+
+</div>
+
+<div id="gameArea">
+
+<h2 id="welcome"></h2>
+
+<h2 id="levelText"></h2>
+
+<h3 id="scoreText">Score : 0</h3>
+
+<div id="display"></div>
+
+<h3 id="info"></h3>
+
+</div>
+
+</div>
+
+<div id="tapPopup"></div>
+
+<div class="modal" id="startModal">
+
+<div class="modal-content">
+
+<h2>Petunjuk</h2>
+
+<br>
+
+<p>
+
+1. Hafalkan urutan warna.<br><br>
+
+2. Posisi warna akan diacak.<br><br>
+
+3. Klik sesuai urutan yang benar.
+
+</p>
+
+<br>
+
+<button onclick="startGame()">Mulai Tes</button>
+
+</div>
+
+</div>
+<script>
+
+// ====================== BACKEND ======================
+
+const BIN_ID = "GANTI_DENGAN_BIN_ID";
+const API_KEY = "GANTI_DENGAN_API_KEY";
+
+const API_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
+
+// ====================== VARIABEL ======================
+
+let playerName = "";
+
+let level = 0;
+
+let score = 0;
+
+let correctCount = 0;
+
+let answer = [];
+
+let sequence = [];
+
+let phase = "idle";
+
+const questions=[
+
+// LEVEL 1
+
+["red","green","yellow"],
+
+["purple","black","pink"],
+
+["gray","blue","orange"],
+
+// LEVEL 2
+
+["red","blue","red","orange","green"],
+
+["green","red","yellow","orange","red"],
+
+["purple","pink","pink","brown","red"],
+
+
+];
+
+// ====================== LOGIN ======================
+
+function login(){
+
+playerName=document.getElementById("playerName").value.trim();
+
+if(playerName==""){
+
+alert("Masukkan nama terlebih dahulu");
+
+return;
+
+}
+
+document.getElementById("loginArea").style.display="none";
+
+document.getElementById("gameArea").style.display="block";
+
+document.getElementById("welcome").innerHTML="Selamat Datang, <b>"+playerName+"</b>";
+
+document.getElementById("startModal").style.display="flex";
+
+loadPlayerCount();
+
+}
+
+// ====================== START ======================
+
+function startGame(){
+
+document.getElementById("startModal").style.display="none";
+
+level=0;
+
+score=0;
+
+correctCount=0;
+
+nextQuestion();
+
+}
+
+// ====================== LEVEL ======================
+
+function nextQuestion(){
+
+if(level>=questions.length){
+
+finishTest();
+
+return;
+
+}
+
+sequence=questions[level];
+
+answer=[];
+
+document.getElementById("levelText").innerHTML="Soal "+(level+1)+" / "+questions.length;
+
+showSequence();
+
+}
+
+// ====================== TAMPILKAN WARNA ======================
+
+function showSequence(){
+
+phase="show";
+
+let display=document.getElementById("display");
+
+display.innerHTML="";
+
+let unique=[...new Set(sequence)];
+
+unique.sort(()=>Math.random()-0.5);
+
+unique.forEach(color=>{
+
+let box=document.createElement("div");
+
+box.className="colorBox";
+
+box.style.background=color;
+
+display.appendChild(box);
+
+});
+
+let boxes=document.querySelectorAll(".colorBox");
+
+let i=0;
+
+let interval=setInterval(()=>{
+
+let current=sequence[i];
+
+boxes.forEach(box=>{
+
+if(box.style.background===current){
+
+box.classList.add("active");
+
+setTimeout(()=>{
+
+box.classList.remove("active");
+
+},400);
+
+}
+
+});
+
+i++;
+
+if(i>=sequence.length){
+
+clearInterval(interval);
+
+setTimeout(startAnswer,900);
+
+}
+
+},700);
+
+}
+
+// ====================== MULAI MENJAWAB ======================
+
+function startAnswer(){
+
+phase="answer";
+
+let display=document.getElementById("display");
+
+display.innerHTML="";
+
+let unique=[...new Set(sequence)];
+
+unique.sort(()=>Math.random()-0.5);
+
+unique.forEach(color=>{
+
+let box=document.createElement("div");
+
+box.className="colorBox";
+
+box.style.background=color;
+
+box.onclick=()=>select(color,box);
+
+display.appendChild(box);
+
+});
+
+updateTap();
+
+}
+
+// ====================== TAP ======================
+
+function updateTap(){
+
+document.getElementById("info").innerHTML=
+
+"Ketukan : "+answer.length+" / "+sequence.length;
+
+}
+
+function popup(color){
+
+let p=document.getElementById("tapPopup");
+
+p.innerHTML="✔";
+
+p.style.background=color;
+
+p.classList.add("showPopup");
+
+setTimeout(()=>{
+
+p.classList.remove("showPopup");
+
+},500);
+
+}
+
+function select(color,box){
+
+if(phase!="answer") return;
+
+answer.push(color);
+
+box.classList.add("press");
+
+setTimeout(()=>{
+
+box.classList.remove("press");
+
+},150);
+
+popup(color);
+
+if(navigator.vibrate){
+
+navigator.vibrate(50);
+
+}
+
+updateTap();
+
+if(answer.length==sequence.length){
+
+phase="lock";
+
+setTimeout(checkAnswer,300);
+
+}
+
+}
+
+// ====================== CEK ======================
+
+function checkAnswer(){
+
+let benar=true;
+
+for(let i=0;i<sequence.length;i++){
+
+if(sequence[i]!=answer[i]){
+
+benar=false;
+
+break;
+
+}
+
+}
+
+if(benar){
+
+correctCount++;
+
+score+=20;
+
+}
+
+document.getElementById("scoreText").innerHTML="Score : "+score;
+
+level++;
+
+setTimeout(nextQuestion,1000);
+
+}
+// ====================== SELESAI ======================
+
+function finishTest(){
+
+let finalScore=Math.round((correctCount/questions.length)*100);
+
+let hasil="";
+let saran="";
+
+if(finalScore>=80){
+
+hasil="🟢 Memory Tinggi";
+
+saran="Kemampuan working memory sangat baik. Pertahankan dengan latihan kognitif secara rutin.";
+
+}
+else if(finalScore>=60){
+
+hasil="🟡 Memory Sedang";
+
+saran="Kemampuan mengingat sudah cukup baik, namun masih dapat ditingkatkan melalui latihan memori visual dan perhatian.";
+
+}
+else{
+
+hasil="🔴 Memory Rendah";
+
+saran="Disarankan berlatih permainan memori, konsentrasi, tidur yang cukup, dan mengurangi distraksi saat belajar.";
+
+}
+
+sendResult(finalScore,hasil);
+
+alert(
+
+"TES SELESAI\n\n"+
+
+"Nama : "+playerName+
+
+"\n\nJawaban Benar : "+correctCount+" dari "+questions.length+
+
+"\n\nSkor : "+finalScore+
+
+"\n\nInterpretasi : "+hasil+
+
+"\n\nSaran : "+saran
+
+);
+
+location.reload();
+
+}
+
+// ====================== SIMPAN HASIL ======================
+
+function sendResult(score,hasil){
+
+fetch(API_URL,{
+
+method:"POST",
+
+headers:{
+
+"Content-Type":"application/json",
+
+"X-Master-Key":API_KEY
+
+},
+
+body:JSON.stringify({
+
+nama:playerName,
+
+score:score,
+
+hasil:hasil,
+
+tanggal:new Date().toLocaleString()
+
+})
+
+})
+
+.catch(err=>console.log(err));
+
+}
+
+// ====================== HITUNG PEMAIN ======================
+
+function loadPlayerCount(){
+
+fetch(API_URL+"/latest",{
+
+headers:{
+
+"X-Master-Key":API_KEY
+
+}
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+let jumlah=1;
+
+if(Array.isArray(data.record)){
+
+jumlah=data.record.length;
+
+}
+
+document.getElementById("playerCount").innerHTML=
+
+"👥 Pemain Hari Ini : "+jumlah;
+
+})
+
+.catch(()=>{
+
+document.getElementById("playerCount").innerHTML=
+
+"👥 Pemain Hari Ini : -";
+
+});
+
+}
+
+// ====================== LOAD ======================
+
+window.onload=function(){
+
+document.getElementById("gameArea").style.display="none";
+
+}
+
+</script>
+
+</body>
+
+</html>
